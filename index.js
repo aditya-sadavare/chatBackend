@@ -1,52 +1,47 @@
-const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
+import express from "express";
+import { Server } from "socket.io";
+import { createServer } from "http";
+import cors from "cors";
 
-const PORT = process.env.PORT || 5000; // Port on which the server will run
+const PORT = process.env.PORT || 5000;
+
 const app = express();
-const server = http.createServer(app);
-const io = socketIo(server, {
+
+app.use(cors({
+  origin: "*", // Replace with your frontend URL
+  methods: ["GET", "POST"],
+  credentials: true,
+}));
+
+const server = createServer(app);
+
+const io = new Server(server, {
   cors: {
-    origin: "https://chat-frontend-bay.vercel.app", // Allow access from this origin
-    methods: ["GET", "POST"] // Allow GET and POST requests
-  }
+    origin: "*", // Replace with your frontend URL
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
 });
 
-// Middleware to handle CORS (Cross-Origin Resource Sharing)
-app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', 'https://chat-frontend-bay.vercel.app');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
-  next();
-});
+io.on("connection", (socket) => {
+  console.log("User connected: " + socket.id);
 
-// Socket.IO server logic
-io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
-
-  // Handling room join
-  socket.on('joinroom', (roomName) => {
-    socket.join(roomName);
-    console.log(`User ${socket.id} joined room ${roomName}`);
-    io.to(roomName).emit('welcome', `User ${socket.id} joined room ${roomName}`);
+  socket.on("message", ({ room, msg, username, socketId }) => {
+    io.to(room).emit("recmsg", { msg, username, socketId });
   });
 
-  // Handling messages
-  socket.on('message', (data) => {
-    console.log(`Message from ${data.username}: ${data.msg}`);
-    io.to(data.room).emit('recmsg', {
-      username: data.username,
-      msg: data.msg,
-      socketId: socket.id
-    });
+  socket.on("joinroom", (room) => {
+    socket.join(room);
+    console.log(`User joined room: ${room}`);
   });
 
-  // Handling disconnection
-  socket.on('disconnect', () => {
-    console.log(`User ${socket.id} disconnected`);
+  socket.on("disconnect", () => {
+    console.log("User disconnected: " + socket.id);
   });
 });
 
-// Start the server
-server.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+app.get("/", (req, res) => {
+  res.send("Hello");
 });
+
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

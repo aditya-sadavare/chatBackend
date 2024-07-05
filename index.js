@@ -1,47 +1,52 @@
-import express from "express";
-import { Server } from "socket.io";
-import { createServer } from "http";
-import cors from "cors";
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
 
-const PORT = process.env.PORT || 5000;
-
+const PORT = process.env.PORT || 5000; // Port on which the server will run
 const app = express();
-
-app.use(cors({
-  origin: "*", // Replace with your frontend URL
-  methods: ["GET", "POST"],
-  credentials: true,
-}));
-
-const server = createServer(app);
-
-const io = new Server(server, {
+const server = http.createServer(app);
+const io = socketIo(server, {
   cors: {
-    origin: "*", // Replace with your frontend URL
-    methods: ["GET", "POST"],
-    credentials: true,
-  },
+    origin: "https://chat-frontend-bay.vercel.app", // Allow access from this origin
+    methods: ["GET", "POST"] // Allow GET and POST requests
+  }
 });
 
-io.on("connection", (socket) => {
-  console.log("User connected: " + socket.id);
+// Middleware to handle CORS (Cross-Origin Resource Sharing)
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', 'https://chat-frontend-bay.vercel.app');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
+  next();
+});
 
-  socket.on("message", ({ room, msg, username, socketId }) => {
-    io.to(room).emit("recmsg", { msg, username, socketId });
+// Socket.IO server logic
+io.on('connection', (socket) => {
+  console.log('A user connected:', socket.id);
+
+  // Handling room join
+  socket.on('joinroom', (roomName) => {
+    socket.join(roomName);
+    console.log(`User ${socket.id} joined room ${roomName}`);
+    io.to(roomName).emit('welcome', `User ${socket.id} joined room ${roomName}`);
   });
 
-  socket.on("joinroom", (room) => {
-    socket.join(room);
-    console.log(`User joined room: ${room}`);
+  // Handling messages
+  socket.on('message', (data) => {
+    console.log(`Message from ${data.username}: ${data.msg}`);
+    io.to(data.room).emit('recmsg', {
+      username: data.username,
+      msg: data.msg,
+      socketId: socket.id
+    });
   });
 
-  socket.on("disconnect", () => {
-    console.log("User disconnected: " + socket.id);
+  // Handling disconnection
+  socket.on('disconnect', () => {
+    console.log(`User ${socket.id} disconnected`);
   });
 });
 
-app.get("/", (req, res) => {
-  res.send("Hello");
+// Start the server
+server.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
 });
-
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

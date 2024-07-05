@@ -5,7 +5,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-
+    "start": "node server.js",
+    "build": "react-scripts build",
+    "vercel-build": "npm run build"
   },
   "keywords": [],
   "author": "",

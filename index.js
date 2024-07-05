@@ -1,5 +1,3 @@
-// server.js
-
 import express from "express";
 import { Server } from "socket.io";
 import { createServer } from "http";
@@ -9,13 +7,17 @@ const PORT = process.env.PORT || 5000;
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: "https://chat-frontend-bay.vercel.app", // Replace with your frontend URL
+  methods: ["GET", "POST"],
+  credentials: true,
+}));
 
 const server = createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "https://chat-frontend-bay.vercel.app",
+    origin: "https://chat-frontend-bay.vercel.app", // Replace with your frontend URL
     methods: ["GET", "POST"],
     credentials: true,
   },
